@@ -1,29 +1,41 @@
 // backend/server.js
 
+// --------------------------------------
 // 1. Core imports
+// --------------------------------------
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// --------------------------------------
 // 2. Local modules
+// --------------------------------------
 const connectDB = require('./db');
 const searchRouter = require('./routes/search');
 
+// --------------------------------------
 // 3. App setup
+// --------------------------------------
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --------------------------------------
 // 4. Middleware
+// --------------------------------------
 app.use(cors({
-  origin: '*',          // you can restrict to 'http://127.0.0.1:5500' if you want
+  origin: '*',        // allow all front-ends (safe for coursework)
 }));
-app.use(express.json());
 
+app.use(express.json()); // allows JSON body parsing
+
+// --------------------------------------
 // 5. Routes
-//   Your coursework route that returns lessons from MongoDB Atlas
+// --------------------------------------
+
+// Main SEARCH API for coursework (Full-Text Style Search)
 app.use('/search', searchRouter);
 
-//   Simple health-check route
+// Health-check route
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
@@ -31,15 +43,20 @@ app.get('/', (req, res) => {
   });
 });
 
-// 6. Connect to MongoDB first, then start the server
+// --------------------------------------
+// 6. Connect to MongoDB Atlas, then start server
+// --------------------------------------
 (async () => {
   try {
-    await connectDB(); // makes sure MongoDB connection works
+    await connectDB();  
+    console.log("Connected to MongoDB Atlas");
+
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+
   } catch (err) {
-    console.error('Failed to start server:', err);
+    console.error("❌ Failed to start server:", err);
     process.exit(1);
   }
 })();
