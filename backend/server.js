@@ -12,6 +12,7 @@ require('dotenv').config();
 // --------------------------------------
 const connectDB = require('./db');
 const searchRouter = require('./routes/search');
+const ordersRouter = require('./routes/orders'); // <-- NEW: orders route
 
 // --------------------------------------
 // 3. App setup
@@ -23,10 +24,13 @@ const PORT = process.env.PORT || 3000;
 // 4. Middleware
 // --------------------------------------
 app.use(cors({
-  origin: '*',        // allow all front-ends (safe for coursework)
+  // For coursework it's fine to allow everything.
+  // If you want, you can restrict this to your front-end origin.
+  origin: '*',
 }));
 
-app.use(express.json()); // allows JSON body parsing
+// Parse incoming JSON bodies
+app.use(express.json());
 
 // --------------------------------------
 // 5. Routes
@@ -35,7 +39,10 @@ app.use(express.json()); // allows JSON body parsing
 // Main SEARCH API for coursework (Full-Text Style Search)
 app.use('/search', searchRouter);
 
-// Health-check route
+// Orders API – saves orders into MongoDB "orders" collection
+app.use('/orders', ordersRouter);
+
+// Simple health-check route
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
@@ -49,14 +56,14 @@ app.get('/', (req, res) => {
 (async () => {
   try {
     await connectDB();  
-    console.log("Connected to MongoDB Atlas");
+    console.log('Connected to MongoDB Atlas');
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
 
   } catch (err) {
-    console.error("❌ Failed to start server:", err);
+    console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
 })();
