@@ -3,16 +3,19 @@
 // --------------------------------------
 // 1. Core imports
 // --------------------------------------
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const fs = require("fs");
+require("dotenv").config();
 
 // --------------------------------------
 // 2. Local modules
 // --------------------------------------
-const connectDB = require('./db');
-const searchRouter = require('./routes/search');
-const ordersRouter = require('./routes/orders'); // <-- NEW: orders route
+const connectDB = require("./db");
+const searchRouter = require("./routes/search");
+const ordersRouter = require("./routes/orders");
+const lessonsRouter = require("./routes/lessons");
 
 // --------------------------------------
 // 3. App setup
@@ -21,32 +24,90 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --------------------------------------
+// 3.5 URL NORMALISER (fix /lessons%0A etc.)
+// --------------------------------------
+app.use((req, res, next) => {
+  const orig = req.url;
+
+  // Remove encoded newline (%0A), carriage returns, and trailing spaces
+  let cleaned = orig.replace(/%0A/gi, "");
+  cleaned = cleaned.replace(/[\r\n]+/g, "");
+  cleaned = cleaned.replace(/\s+$/g, "");
+
+  if (orig !== cleaned) {
+    console.log(
+      "URL normalised:",
+      JSON.stringify(orig),
+      "=>",
+      JSON.stringify(cleaned)
+    );
+    req.url = cleaned;
+    req.originalUrl = cleaned; // keep logger output in sync
+  }
+
+  next();
+});
+
+// --------------------------------------
 // 4. Middleware
 // --------------------------------------
-app.use(cors({
-  // For coursework it's fine to allow everything.
-  // If you want, you can restrict this to your front-end origin.
-  origin: '*',
-}));
 
-// Parse incoming JSON bodies
+// Allow front-end access
+app.use(
+  cors({
+    origin: "*",
+  })
+);
+
+// Parse JSON request bodies
 app.use(express.json());
+
+// ------------ LOGGER MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
+app.use((req, res, next) => {
+  const now = new Date().toISOString();
+  console.log("---- LOGGER ----");
+  console.log("Time:", now);
+  console.log("Method:", req.method);
+  console.log("URL:", req.originalUrl);
+  console.log("Query:", req.query);
+  console.log("Body:", req.body);
+  console.log("----------------");
+  next();
+});
+
+// ------------ STATIC FILE MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
+// Serve lesson images stored in backend/images
+app.get("/images/:fileName", (req, res) => {
+  const fileName = req.params.fileName;
+  const imagePath = path.join(__dirname, "images", fileName);
+
+  fs.access(imagePath, (err) => {
+    if (err) {
+      console.log(`❌ Image not found: ${imagePath}`);
+      return res.status(404).json({ error: "Image not found" });
+    }
+    res.sendFile(imagePath);
+  });
+});
 
 // --------------------------------------
 // 5. Routes
 // --------------------------------------
 
-// Main SEARCH API for coursework (Full-Text Style Search)
-app.use('/search', searchRouter);
+// Lessons API – GET + PUT (e.g. GET /lessons, PUT /lessons/1)
+app.use("/lessons", lessonsRouter);
 
-// Orders API – saves orders into MongoDB "orders" collection
-app.use('/orders', ordersRouter);
+// Main SEARCH API (e.g. GET /search?text=math)
+app.use("/search", searchRouter);
 
-// Simple health-check route
-app.get('/', (req, res) => {
+// Orders API
+app.use("/orders", ordersRouter);
+
+// Simple health-check
+app.get("/", (req, res) => {
   res.json({
-    status: 'OK',
-    message: 'Full Stack Coursework backend is running',
+    status: "OK",
+    message: "Full Stack Coursework backend is running",
   });
 });
 
@@ -55,15 +116,14 @@ app.get('/', (req, res) => {
 // --------------------------------------
 (async () => {
   try {
-    await connectDB();  
-    console.log('Connected to MongoDB Atlas');
+    await connectDB();
+    console.log("Connected to MongoDB Atlas");
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
-
   } catch (err) {
-    console.error('❌ Failed to start server:', err);
+    console.error("❌ Failed to start server:", err);
     process.exit(1);
   }
 })();
