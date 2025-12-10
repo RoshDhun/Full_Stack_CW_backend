@@ -1,22 +1,44 @@
 // backend/db.js
-const { MongoClient } = require("mongodb");
+const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 
-const client = new MongoClient(process.env.MONGO_URI);
+if (!process.env.MONGO_URI) {
+  throw new Error("❌ MONGO_URI is missing. Set it in Render environment variables.");
+}
+
+const uri = process.env.MONGO_URI;
+
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+  tls: true,   // ensure TLS is always enabled for Atlas SRV URLs
+});
 
 let db;
 
 /**
- * Connect to MongoDB Atlas and return the FScoursework database.
- * Uses a singleton pattern so the connection is reused.
+ * Connect to MongoDB Atlas and return the database.
+ * Uses a singleton pattern so only one connection is created.
  */
 async function connectDB() {
-  if (!db) {
+  if (db) return db;
+
+  try {
+    console.log("🔌 Connecting to MongoDB Atlas...");
     await client.connect();
-    db = client.db("FScoursework"); // <-- this must match the DB name in Atlas
-    console.log("Connected to MongoDB Atlas");
+
+    const dbName = process.env.DB_NAME || "FScoursework";
+    db = client.db(dbName);
+
+    console.log(`✅ Connected to MongoDB Atlas (DB: ${dbName})`);
+    return db;
+  } catch (err) {
+    console.error("❌ MongoDB connection failed:", err);
+    throw err;
   }
-  return db;
 }
 
 module.exports = connectDB;
