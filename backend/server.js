@@ -28,7 +28,7 @@ const PORT = process.env.PORT || 3000;
 // 3.5 URL NORMALISER (fix /lessons%0A etc.)
 // --------------------------------------
 app.use((req, res, next) => {
-  const orig = req.url;
+  const orig = req.url || "";
 
   // Remove encoded newline (%0A), real newlines, and trailing spaces
   let cleaned = orig.replace(/%0A/gi, "");
@@ -43,7 +43,7 @@ app.use((req, res, next) => {
       JSON.stringify(cleaned)
     );
     req.url = cleaned;
-    req.originalUrl = cleaned;
+    req.originalUrl = cleaned; // keep logger output in sync
   }
 
   next();
@@ -53,14 +53,18 @@ app.use((req, res, next) => {
 // 4. Middleware
 // --------------------------------------
 
-// Allow front-end access
-app.use(cors({ origin: "*" }));
+// Allow front-end access from anywhere (fine for coursework)
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 
 // Parse JSON request bodies
 app.use(express.json());
 
 // ------------ LOGGER MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
-// Logs every request to the console so you can inspect/explain it
+// Outputs all requests to the server console
 app.use((req, res, next) => {
   const now = new Date().toISOString();
   console.log("---- LOGGER ----");
@@ -74,7 +78,7 @@ app.use((req, res, next) => {
 });
 
 // ------------ STATIC FILE MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
-// Returns lesson images or an error message if the image does not exist
+// Returns lesson images from backend/images or an error if not found
 app.get("/images/:fileName", (req, res) => {
   const fileName = req.params.fileName;
   const imagePath = path.join(__dirname, "images", fileName);
@@ -91,10 +95,18 @@ app.get("/images/:fileName", (req, res) => {
 // --------------------------------------
 // 5. Routes
 // --------------------------------------
-app.use("/lessons", lessonsRouter);   // GET + PUT lessons
-app.use("/search", searchRouter);     // Search lessons
-app.use("/orders", ordersRouter);     // POST orders
-app.use("/users", usersRouter);       // 🔐 signup + login
+
+// Lessons API – GET + PUT (e.g. GET /lessons, PUT /lessons/1)
+app.use("/lessons", lessonsRouter);
+
+// Main SEARCH API (e.g. GET /search?text=math)
+app.use("/search", searchRouter);
+
+// Orders API – POST /orders
+app.use("/orders", ordersRouter);
+
+// Users API – POST /users/signup, POST /users/login
+app.use("/users", usersRouter);
 
 // Simple health-check
 app.get("/", (req, res) => {
@@ -109,7 +121,7 @@ app.get("/", (req, res) => {
 // --------------------------------------
 (async () => {
   try {
-    await connectDB();
+    await connectDB(); // uses MONGO_URI + DB_NAME from env
     console.log("Connected to MongoDB Atlas");
 
     app.listen(PORT, () => {
@@ -117,6 +129,7 @@ app.get("/", (req, res) => {
     });
   } catch (err) {
     console.error("❌ Failed to start server:", err);
+    // Render will treat this as a failed deploy if we exit here
     process.exit(1);
   }
 })();
