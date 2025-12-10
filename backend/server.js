@@ -16,7 +16,7 @@ const connectDB = require("./db");
 const searchRouter = require("./routes/search");
 const ordersRouter = require("./routes/orders");
 const lessonsRouter = require("./routes/lessons");
-const usersRouter = require("./routes/users"); // 🔐 NEW
+const usersRouter = require("./routes/users"); // 🔐 signup/login
 
 // --------------------------------------
 // 3. App setup
@@ -30,12 +30,18 @@ const PORT = process.env.PORT || 3000;
 app.use((req, res, next) => {
   const orig = req.url;
 
+  // Remove encoded newline (%0A), real newlines, and trailing spaces
   let cleaned = orig.replace(/%0A/gi, "");
   cleaned = cleaned.replace(/[\r\n]+/g, "");
   cleaned = cleaned.replace(/\s+$/g, "");
 
   if (orig !== cleaned) {
-    console.log("URL normalised:", JSON.stringify(orig), "=>", JSON.stringify(cleaned));
+    console.log(
+      "URL normalised:",
+      JSON.stringify(orig),
+      "=>",
+      JSON.stringify(cleaned)
+    );
     req.url = cleaned;
     req.originalUrl = cleaned;
   }
@@ -46,10 +52,15 @@ app.use((req, res, next) => {
 // --------------------------------------
 // 4. Middleware
 // --------------------------------------
+
+// Allow front-end access
 app.use(cors({ origin: "*" }));
+
+// Parse JSON request bodies
 app.use(express.json());
 
 // ------------ LOGGER MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
+// Logs every request to the console so you can inspect/explain it
 app.use((req, res, next) => {
   const now = new Date().toISOString();
   console.log("---- LOGGER ----");
@@ -63,6 +74,7 @@ app.use((req, res, next) => {
 });
 
 // ------------ STATIC FILE MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
+// Returns lesson images or an error message if the image does not exist
 app.get("/images/:fileName", (req, res) => {
   const fileName = req.params.fileName;
   const imagePath = path.join(__dirname, "images", fileName);
