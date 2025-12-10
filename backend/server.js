@@ -43,6 +43,7 @@ app.use((req, res, next) => {
       JSON.stringify(cleaned)
     );
     req.url = cleaned;
+
     req.originalUrl = cleaned; // keep logger output in sync
   }
 
@@ -64,6 +65,7 @@ app.use(
 app.use(express.json());
 
 // ------------ LOGGER MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
+
 // Outputs all requests to the server console
 app.use((req, res, next) => {
   const now = new Date().toISOString();
@@ -78,6 +80,7 @@ app.use((req, res, next) => {
 });
 
 // ------------ STATIC FILE MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
+
 // Returns lesson images from backend/images or an error if not found
 app.get("/images/:fileName", (req, res) => {
   const fileName = req.params.fileName;
