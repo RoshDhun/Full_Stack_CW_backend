@@ -16,6 +16,7 @@ const connectDB = require("./db");
 const searchRouter = require("./routes/search");
 const ordersRouter = require("./routes/orders");
 const lessonsRouter = require("./routes/lessons");
+const usersRouter = require("./routes/users"); // 🔐 NEW
 
 // --------------------------------------
 // 3. App setup
@@ -29,20 +30,14 @@ const PORT = process.env.PORT || 3000;
 app.use((req, res, next) => {
   const orig = req.url;
 
-  // Remove encoded newline (%0A), carriage returns, and trailing spaces
   let cleaned = orig.replace(/%0A/gi, "");
   cleaned = cleaned.replace(/[\r\n]+/g, "");
   cleaned = cleaned.replace(/\s+$/g, "");
 
   if (orig !== cleaned) {
-    console.log(
-      "URL normalised:",
-      JSON.stringify(orig),
-      "=>",
-      JSON.stringify(cleaned)
-    );
+    console.log("URL normalised:", JSON.stringify(orig), "=>", JSON.stringify(cleaned));
     req.url = cleaned;
-    req.originalUrl = cleaned; // keep logger output in sync
+    req.originalUrl = cleaned;
   }
 
   next();
@@ -51,15 +46,7 @@ app.use((req, res, next) => {
 // --------------------------------------
 // 4. Middleware
 // --------------------------------------
-
-// Allow front-end access
-app.use(
-  cors({
-    origin: "*",
-  })
-);
-
-// Parse JSON request bodies
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
 // ------------ LOGGER MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
@@ -76,7 +63,6 @@ app.use((req, res, next) => {
 });
 
 // ------------ STATIC FILE MIDDLEWARE (REQUIRED BY COURSEWORK) ------------
-// Serve lesson images stored in backend/images
 app.get("/images/:fileName", (req, res) => {
   const fileName = req.params.fileName;
   const imagePath = path.join(__dirname, "images", fileName);
@@ -93,15 +79,10 @@ app.get("/images/:fileName", (req, res) => {
 // --------------------------------------
 // 5. Routes
 // --------------------------------------
-
-// Lessons API – GET + PUT (e.g. GET /lessons, PUT /lessons/1)
-app.use("/lessons", lessonsRouter);
-
-// Main SEARCH API (e.g. GET /search?text=math)
-app.use("/search", searchRouter);
-
-// Orders API
-app.use("/orders", ordersRouter);
+app.use("/lessons", lessonsRouter);   // GET + PUT lessons
+app.use("/search", searchRouter);     // Search lessons
+app.use("/orders", ordersRouter);     // POST orders
+app.use("/users", usersRouter);       // 🔐 signup + login
 
 // Simple health-check
 app.get("/", (req, res) => {
